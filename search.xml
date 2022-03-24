@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title></title>
+    <url>%2F2022%2F03%2F23%2Fdocker%2F</url>
+    <content type="text"><![CDATA[1234title: docker学习date: 2022年3月23日22:28:46tags: [docker]categories: docker 虚拟机和容器的区别 Docker容器是在操作系统层面上实现虚拟化，直接复用本地主机的操作系统，而传统虚拟机则是在硬件层面实现虚拟化。docker优势体现为启动速度快，占用体积小。 不同之处 传统虚拟机技术是虚拟出一套硬件后，在其上运行一个完整的操作系统，在该系统上再运行所需应用进程 容器内的应用进程直接运行与宿主的内核，容器内没有自己的内核==也没有进行硬件虚拟==。因此容器要比传统虚拟机更为轻便。 每个容器之间相互隔离，每个容器有自己的文件系统，容器之间进行不会相互影响，能区分计算资源。 Docker的基本组成镜像 一个只读模板，可以用来创建Docker容器，一个镜像可以创建很多容器 容器 容器是用镜像创建的运行实例 仓库 放一堆镜像的地方 命令启动 systemctl start docker (stop ,restart,status,enable) 镜像命令 docker images docker search –limit docker pull docker system df 查看镜像/容器/数据卷所占空间 docker rmi docker的虚悬镜像是什么？ 仓库名，标签都是的镜像，俗称虚悬镜像 容器命令 docker run -it ubuntu /bin/bash(bash) docker ps 退出容器 exit 直接退出容器 ctrl+p+q 退出交互 不退容器 docker logs 查看日志 docker inspect 查看内部内部细节 docker exec -it *** /bin/bash 进入容器 docker attach 121.attach直接进入容器启动命令的终端，不会启动新的进程，用exit退出会导致容器的停止。2.exec是在容器中打开新的终端，并且可以启动新的进程，用exit退出，不会导致容器的停止。 docker export 容器 &gt; **.tar 导出 cat **.tar | docker import -镜像用户/镜像名:版本号 本地镜像联合文件系统 镜像分层最大的一个好处就是共享资源，方便复制迁移，就是为了复用。 Docker镜像层都是只读的，容器层是可写的 docker commit docker commit 提交容器副本使之成为一个新的镜像 docker commit -m =”提交的描述信息” -a=”作者” 容器ID 要创建的目标镜像名:标签名 镜像推送到私服 docker pull registry docker run -d -p 5000:5000 -v /zzyyuse/myregistry/:/tmp/registry --privileged=true registry 查看私服仓库 curl -XGET http://192.168.5.128:5000/v2/_catalog 主机ip 将新镜像修改成符合私服规范的tag docker tag 镜像:tag Host:Port/Repository:Tag docker tag ubuntu-net:1.0 192.168.5.128:5000/ubuntu-net:1.0 修改配置文件使之支持http &quot;insecure-registries&quot;:[&quot;192.168.5.128:5000&quot;] vim /etc/docker/daemon.json 添加上述语句 ==不生效可重启docker== docker push 192.168.5.128:5000/ubuntu-net:1.0 查看私服仓库 curl -XGET http://192.168.5.128:5000/v2/_catalog 删除本地镜像 测试私服仓库docker pull 192.168.5.128:5000/ubuntu-net:1.0 容器数据卷解决问题 如果出现cannot open directory:Permission denied 在挂载目录多加一个 --privileged=true 规则​ 1. docker run -it --privileged=true -v /宿主机绝对路径目录:/容器内目录:rw 镜像名 默认就是rw ​ 只能读取不能写 ro 宿主机可读可写，容器内部被限制只能读取不能写 继承 –volumes-from 父类 继承容器卷映射关系 安装简介总体步骤 搜索镜像 docker hub docker search tomcat 拉取镜像 查看镜像 启动镜像 停止镜像 移除镜像 安装tomcat docker pull tomcat docker run -d -p 8080:8080 --name=t1 tomcat 查看localhost:8080 404 进入容器 docker exec -it ID /bin/bash 删除webapps mv webapps.dist webapps 新版(10.0)webapps中没有文件 可以换用 tomcat8 安装mysql123456789101112docker run -d -p 3306:3306 --privileged=true -v /mydata/mysql/log:/var/log/mysql -v /mydata/mysql/data:/var/lib/mysql -v /mydata/mysql/conf:/etc/mysql/conf.d -e MYSQL_ROOT_PASSWORD=123456 --name mysql mysql:5.7conf文件夹创建my.cnf文件写入[client]default_character_set=utf8[mysqld]collation_server=utf8_general_cicharacter_set_server=utf8 安装redis12345docker run -p 6379:6379 --name redis --privileged=true -v /mydata/redis/conf/redis.conf:/etc/redis/redis.conf -v /mydata/redis/data:/data -d redis:6.0.8 redis-server /etc/redis/redis.confredis.conf#注释 bind 127.0.0.1#appendonly yes 进阶mysql主从复制新建主服务器容器实例330712345docker run -p 3307:3306 --name mysql-server --privileged=true -v /mydata/mysql-master/log:/var/log/mysql \-v /mydata/mysql-master/data:/var/lib/mysql \-v /mydata/mysql-master/conf:/etc/mysql \-e MYSQL_ROOT_PASSWORD=123456 \-d mysql:5.7 conf中新建my.cnf123456789[mysqld]server_id=101#自带数据库binlog-ignore-db=mysqllog-bin=mall-mysql-binbinlog_cache_size=1Mbinlog_format=mixedexpire_logs_days=7slave_skip_errors=1062 重启master进入容器docker exec -it mysql-server /bin/bash mysql -uroot -p 创建数据同步用户12create user 'slave'@'%' identified by '123456';grant replication slave,replication client on *.* to 'slave'@'%'; 新建从服务器 330812345docker run -p 3308:3306 --name mysql-slave --privileged=true -v /mydata/mysql-slave/log:/var/log/mysql \-v /mydata/mysql-slave/data:/var/lib/mysql \-v /mydata/mysql-slave/conf:/etc/mysql \-e MYSQL_ROOT_PASSWORD=123456 \-d mysql:5.7 conf中新建my.cnf1234567891011[mysqld]server_id=102binlog-ignore-db=mysqllog-bin=mall-mysql-slave1-binbinlog_cache_size=1Mbinlog_format=mixedexpire_logs_days=7slave_skip_errors=1062relay_log=mall-mysql-relay-binlog_slave_updates=1read_only=1 重启slave在主数据库中查看同步状态show master status 进入从机在从数据库中配置主从复制change master to master_host=&#39;192.168.5.128&#39;, master_user=&#39;slave&#39;, master_password=&#39;123456&#39;, master_port=3307, master_log_file=&#39;mall-mysql-bin.000001&#39;, master_log_pos= 617, master_connect_retry=30; 注意同步文件名称 在从数据库中查看同步状态show slave status \G \G 可加可不加 在从数据库中开启主从同步 start slave]]></content>
+  </entry>
+  <entry>
+    <title><![CDATA[mongoDb]]></title>
+    <url>%2F2018%2F12%2F05%2FmongoDb%2F</url>
+    <content type="text"><![CDATA[update类型 Type Number Alias Notes Double 1 “double” String 2 “string” Object 3 “object” Array 4 “array” Binary data 5 “binData” Undefined 6 “undefined” Deprecated. ObjectId 7 “objectId” Boolean 8 “bool” Date 9 “date” Null 10 “null” Regular Expression 11 “regex” DBPointer 12 “dbPointer” Deprecated. JavaScript 13 “javascript” Symbol 14 “symbol” Deprecated. JavaScript (with scope) 15 “javascriptWithScope” 32-bit integer 16 “int” Timestamp 17 “timestamp” 64-bit integer 18 “long” Decimal128 19 “decimal” New in version 3.4. Min key -1 “minKey” Max key 127 “maxKey” 更新操作 id 字段，一旦设定，你不能更新id字段,你也不能用有不同 id字段值的替换文档来替换已经存在的文档。并且id字段始终是文档中的第一个字段 db.collection.updateOne() : 即使可能有==多个文档==通过过滤条件匹配到，但是也最多也==只更新一个==文档 db.collection.updateMany(): 更新所有==通过==过滤条件匹配的文档 db.collection.update():即使可能有多个文档通过过滤条件匹配到，但是也最多也只==更新==或者==替换==一个文档。默认只更新一个文档。要更新多个文档，请使用 multi选项。 db.collection.save(): 如果集合内部已经存在一个相同的id的记录，则会替换已经存在的那条记录。如果不存在，则会插入文档 12345678db.users.update( &#123; &quot;favorites.artist&quot;: &quot;Pisanello&quot; &#125;, &#123; $set: &#123; &quot;favorites.food&quot;: &quot;pizza&quot;, type: 0, &#125;, $currentDate: &#123; lastModified: true &#125; &#125;, &#123; multi: true &#125;) db.collection.update(criteria,objNew,upsert,multi) 1234criretia:查询条件objNew:update对象和一些更新操作符upsert：默认是false.如果不存在update的记录时候插入objNew这个新的文档，true为插入。存在update记录时候则修改这条记录。multi:默认是false.只更新找到的第一条记录。如果为true,把按条件查询出来的记录全部更新 更新操作符 作用描述 $inc {$incl:{field:value}} 对一个数字字段的某个field增加value $set {$set: {field:value } } 将文档中的某个字段field的值设为value $unset {$unset:{field:1}} 删除某个字段 $push {$push:{field:value}} 将value追加到field(数组)里,不存在则会插入$p $pushAll 追加多个值到一个数组字段中 $addToset 加一个值到数组内，而且只有当这个值在数组中不存在时才增加 {$pop:{field:1(-1)}} 删除数组内的一个值，-1表示删除数组内的第一个值，1表示最后一个值 {${pull:{field:value}}} 从数组中删除一个等于value的值 $pushAll 一次删除数组中的多个值 {$rename:{old:new}} 对字段进行重命名 文档替换 db.collection.replaceOne 需要传递一个全新的文档(除id 字段外：id字段是不变的，不能修改，如果包含了id字段，它的值必须与当前的值相同) 123456789db.users.replaceOne( &#123;name:"abc"&#125;, &#123; name: "amy", age: 34, type: 2, status: "P", favorites: &#123; "artist": "Dali", food: "donuts" &#125; &#125;) db.users.update( &#123; name: "xyz" &#125;, &#123; name: "mee", age: 25, type: 1, status: "A", favorites: &#123; "artist": "Matisse", food: "mango" &#125; &#125;)]]></content>
+      <categories>
+        <category>mogondb</category>
+      </categories>
+  </entry>
+  <entry>
+    <title><![CDATA[多客户端使用]]></title>
+    <url>%2F2018%2F12%2F04%2F%E5%A4%9A%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%BD%BF%E7%94%A8%2F</url>
+    <content type="text"><![CDATA[多客户端使用 github上创建多分支,hexo管理master主分支。自己管理分支 ​ 修改配置并保存 在本地gitbash连接远程仓库,使用 git clone +仓库地址 下载到本地 将hexo下的文件夹复制到刚刚clone到本地的文件夹中 12&gt; 有多个.git文件夹时候可能会上传失败，保留根目录的.git文件夹&gt; 提交分支 123456&gt; 查看当前分支 如果当前分支为master分支 需要切换到自己管理的分支，然后提交&gt; git branch&gt; git add .&gt; git commit -m &apos;back up &apos;&gt; git push&gt; 其他电脑 12345678910111213&gt; 新电脑的ssh key 添加到github账户上&gt; clone远程仓库的代码 查看当前分支&gt; 切换到 username.github.io目录,需要先执行&gt; npm install(.gitignore忽略了文件)&gt; 提交(注意：当前分支) git pull 查看有无冲突&gt; git add .&gt; git commit -m &apos;back up&apos;(&apos;&apos;里面内容可修改)&gt; git push&gt; hexo部署 hexo server 查看本地&gt; hexo clean &gt; hexo d -g&gt; hexo deploy &gt;]]></content>
+      <categories>
+        <category>hexo</category>
+      </categories>
+  </entry>
+  <entry>
+    <title><![CDATA[docker使用mongoDb]]></title>
+    <url>%2F2018%2F12%2F04%2Fdocker%E4%BD%BF%E7%94%A8mongoDb%2F</url>
+    <content type="text"><![CDATA[安装mongodb 从docke hub上获取下载地址 默认版本信息为(latest) 如需其他版本也可在docker hub中查找 运行镜像基本执行 123456&gt; docker run --name mongo -d mongo:tag&gt; --name 别名&gt; -d 后台执行&gt; mongo:tag：下载的mongodb版本 默认为latest&gt; 默认端口:27017&gt; 持久化 在宿主机上创建一个数据存储目录（/etc/data/mongodb），将其映射到容器中的目录中。将数据库文件存储在主机系统，便于主机系统上的工具和应用程序访问文件 mkdir -p /etc/data/mongodb docker run –name mongo -v /etc/data/mongodb:/data/db -d mongo 坑: 使用命令 docker ps 查看运行容器 发现容器没有启动 使用命令docker ps -a 查看 发现容器已经退出 使用命令docker logs (containerId) 查看日志信息 提示权限不够 在运行命令加上 –privileged=true 1docker run --name mongo -v /etc/data/mongodb:/data/db --privileged=true -d mongo 如果提示容器名已在使用（is already in use ）docker rm mongo 容器启动后，运行如下命令以管理员进入终端命令行 1docker exec -it mongo mongo admin 可以看到 /etc/data/mongodb 目录下已存在数据]]></content>
+      <categories>
+        <category>数据库</category>
+      </categories>
+      <tags>
+        <tag>docker</tag>
+        <tag>数据库</tag>
+        <tag>mongodb</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[Swagger注解]]></title>
+    <url>%2F2018%2F12%2F04%2FSwagger%E6%B3%A8%E8%A7%A3%2F</url>
+    <content type="text"><![CDATA[注解详解 @Api() : 用于类(controller)；标识这个类是swagger的资源 123tags: 表示说明,设置这个值、value的值会被覆盖value: url的路径值description: 对api资源的描述 @ApiOperation() :用于方法(controller里面的方法); 123value:url的路径值tags:设置这个值，value的值会被覆盖description：对该方法的描述 @ApiParame:属性描述，用于解释方法中的参数 1234name:属性名称value：属性值required:是否属性必填hidden:隐藏该属性 @ApiResponse:请求返回信息描述,用于controller方法之上 12code: 请求返回的状态码（http请求码）message：信息描述 @ApiModel() : 用于返回对象类上,对类进行说明；描述返回对象的意义 @ApiModelProperty: 描述一个model的属性。]]></content>
+      <categories>
+        <category>Swagger</category>
+      </categories>
+      <tags>
+        <tag>记录</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title><![CDATA[Hello,Hexo]]></title>
+    <url>%2F2018%2F12%2F03%2FHello-Hexo%2F</url>
+    <content type="text"></content>
+      <categories>
+        <category>搭建博客</category>
+      </categories>
+      <tags>
+        <tag>hexo</tag>
+        <tag>github</tag>
+        <tag>基础</tag>
+      </tags>
+  </entry>
+</search>
